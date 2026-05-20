@@ -51,7 +51,7 @@ if (missingEnv.length > 0) {
   // but most routes will fail.
 }
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://youtubeclients.vercel.app';
 const PORT = process.env.PORT || 5000;
 
 const app = express();
@@ -59,7 +59,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
-      'http://localhost:5173',
+      'https://youtubeclients.vercel.app',
       'http://localhost:5174',
       'https://youtube-peach-alpha.vercel.app',
       ...(process.env.EXTRA_ORIGINS ? process.env.EXTRA_ORIGINS.split(',') : []),
@@ -80,7 +80,7 @@ app.use(helmet());
 app.use(
   cors({
     origin: [
-      'http://localhost:5173',
+      'https://youtubeclients.vercel.app',
       'http://localhost:5174',
       'https://youtube-peach-alpha.vercel.app',
       ...(process.env.EXTRA_ORIGINS ? process.env.EXTRA_ORIGINS.split(',') : []),
