@@ -1,13 +1,15 @@
 import mongoose from 'mongoose';
 
 const channelSchema = new mongoose.Schema({
-  channelId: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  channelId: { type: String, required: true },
   title: String,
   customUrl: String,
   thumbnailUrl: String,
   accessToken: String,
   refreshToken: String,
   expiryDate: Number,
+  apiKey: String,
   settings: {
     autoLikePositive: { type: Boolean, default: true },
     autoReplyPositive: { type: Boolean, default: false },
@@ -17,5 +19,7 @@ const channelSchema = new mongoose.Schema({
   },
   lastSyncedAt: Date,
 }, { timestamps: true });
+
+channelSchema.index({ userId: 1, channelId: 1 }, { unique: true });
 
 export default mongoose.model('Channel', channelSchema);
