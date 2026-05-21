@@ -241,24 +241,25 @@ seedAdmin();
 
 // Kick off OAuth flow
 app.get('/auth', (_req, res) => {
-  const client = getYouTubeAuth();
-  const authUrl = client.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    scope: [
-      'https://www.googleapis.com/auth/youtube.readonly',
-      'https://www.googleapis.com/auth/youtube.force-ssl'
-    ],
-  });
-  const redirectUri = process.env.REDIRECT_URI;
-  logger.info(`Initiating Google OAuth flow. REDIRECT_URI: ${redirectUri}`);
-  
-  if (!redirectUri) {
-    logger.error('CRITICAL: REDIRECT_URI is missing. OAuth will fail.');
-    return res.status(500).send('OAuth Configuration Error: Missing REDIRECT_URI');
-  }
+  try {
+    const redirectUri = process.env.REDIRECT_URI?.trim();
+    logger.info(`Initiating Google OAuth flow. REDIRECT_URI: ${redirectUri}`);
 
-  res.redirect(authUrl);
+    const client = getYouTubeAuth();
+    const authUrl = client.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: [
+        'https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/youtube.force-ssl'
+      ],
+    });
+
+    res.redirect(authUrl);
+  } catch (err) {
+    logger.error(`Failed to generate OAuth URL: ${err.message}`);
+    res.status(500).json({ error: 'OAuth Configuration Error', details: err.message });
+  }
 });
 
 // OAuth callback
@@ -285,12 +286,11 @@ app.get('/api/youtube/callback', async (req, res) => {
     return res.redirect(`${FRONTEND_URL}/?error=invalid_session`);
   }
 
-  const client = getYouTubeAuth();
-  const redirectUri = process.env.REDIRECT_URI;
-  
-  logger.info(`OAuth callback received. Exchanging code with REDIRECT_URI: ${redirectUri}`);
-
   try {
+    const client = getYouTubeAuth();
+    const redirectUri = process.env.REDIRECT_URI?.trim();
+    logger.info(`OAuth callback logic starting. Exchanging code using REDIRECT_URI: ${redirectUri}`);
+
     const { tokens } = await client.getToken(code);
     client.setCredentials(tokens);
 
