@@ -10,6 +10,7 @@ const channelSchema = new mongoose.Schema({
   refreshToken: String,
   expiryDate: Number,
   apiKey: String,
+  uploadsPlaylistId: String,
   settings: {
     autoLikePositive: { type: Boolean, default: true },
     autoReplyPositive: { type: Boolean, default: false },

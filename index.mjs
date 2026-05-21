@@ -344,15 +344,39 @@ app.get('/api/youtube/channels', authMiddleware, async (req, res) => {
   }
 });
 
+app.delete('/api/youtube/channels/:channelId', authMiddleware, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    
+    // 1. Delete Channel
+    const deletedChannel = await Channel.findOneAndDelete({ userId: req.user.id, channelId });
+    if (!deletedChannel) {
+      return res.status(404).json({ error: 'Channel not found or does not belong to you' });
+    }
+
+    // 2. We can optionally sweep existing comments for this channel if required, 
+    // but usually, it's safer to keep or delete them based on business logic. 
+    // We will clean up immediately to respect data privacy:
+    await Comment.deleteMany({ userId: req.user.id, channelId });
+
+    res.json({ success: true, message: 'Channel completely disconnected and related data cleared.' });
+  } catch (error) {
+    logger.error('Error disconnecting channel:', error);
+    res.status(500).json({ error: 'Failed to disconnect channel' });
+  }
+});
+
 app.get('/api/youtube/videos', authMiddleware, async (req, res) => {
   try {
     const { channelId } = req.query;
-    const query = { userId: req.user.id };
-    if (channelId) query.channelId = channelId;
-    const channel = await Channel.findOne(query);
+    if (!channelId) {
+      return res.status(400).json({ error: 'channelId is required to fetch videos' });
+    }
+    
+    const channel = await Channel.findOne({ userId: req.user.id, channelId });
 
     if (!channel) {
-      return res.status(404).json({ error: 'No channel connected' });
+      return res.status(404).json({ error: 'Channel not found or not connected' });
     }
 
     let youtube;
@@ -377,8 +401,10 @@ app.get('/api/youtube/videos', authMiddleware, async (req, res) => {
 // ── API: Comments ──────────────────────────────────────────────────────────────
 app.get('/api/comments', authMiddleware, async (req, res) => {
   try {
-    const { status, sentiment, autoLiked, videoId } = req.query;
+    const { status, sentiment, autoLiked, videoId, channelId } = req.query;
     const query = { userId: req.user.id };
+    
+    if (channelId) query.channelId = channelId; // Support channel-specific fetch
     if (status) query.status = status;
     if (sentiment) query.sentiment = sentiment;
     if (autoLiked !== undefined) query.autoLiked = autoLiked === 'true';
@@ -551,8 +577,15 @@ app.get('/api/youtube/comments/analyze/:videoId', authMiddleware, async (req, re
 // ── API: Analytics ─────────────────────────────────────────────────────────────
 app.get('/api/analytics', authMiddleware, async (req, res) => {
   try {
+    const { channelId } = req.query;
     const userIdObj = new mongoose.Types.ObjectId(req.user.id);
     const query = { userId: req.user.id };
+    const aggMatch = { userId: userIdObj };
+    
+    if (channelId) {
+      query.channelId = channelId;
+      aggMatch.channelId = channelId;
+    }
 
     const totalComments = await Comment.countDocuments(query);
     const toxicDeleted = await Comment.countDocuments({ ...query, status: 'deleted' });
@@ -560,17 +593,17 @@ app.get('/api/analytics', authMiddleware, async (req, res) => {
     const pendingModeration = await Comment.countDocuments({ ...query, status: { $in: ['pending', 'flagged'] } });
 
     const sentimentCounts = await Comment.aggregate([
-      { $match: { userId: userIdObj } },
+      { $match: aggMatch },
       { $group: { _id: '$sentiment', count: { $sum: 1 } } }
     ]);
 
     const languageCounts = await Comment.aggregate([
-      { $match: { userId: userIdObj } },
+      { $match: aggMatch },
       { $group: { _id: '$language', count: { $sum: 1 } } }
     ]);
 
     const wordCategoryCounts = await Comment.aggregate([
-      { $match: { userId: userIdObj } },
+      { $match: aggMatch },
       { $unwind: '$detectedWords' },
       { $group: { _id: '$detectedWords.category', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
