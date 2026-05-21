@@ -46,9 +46,10 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const REQUIRED_ENV = ['MONGODB_URI', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'REDIRECT_URI'];
 const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missingEnv.length > 0) {
-  logger.error(`CRITICAL: Missing env vars: ${missingEnv.join(', ')}`);
-  // Not exiting immediately so we can show a friendly message if needed, 
-  // but most routes will fail.
+  logger.error(`❌ CRITICAL STARTUP ERROR: Missing required environment variables: ${missingEnv.join(', ')}`);
+  logger.info('Please ensure all required variables are set in Render dashboard.');
+} else {
+  logger.info('✅ Environment variables validated.');
 }
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -91,7 +92,7 @@ const corsOptions = {
 
 app.use(helmet());
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
@@ -108,10 +109,11 @@ app.use(cookieParser());
 
 // ── MongoDB ────────────────────────────────────────────────────────────────────
 if (process.env.MONGODB_URI) {
+  logger.info('Attempting to connect to MongoDB...');
   mongoose
     .connect(process.env.MONGODB_URI)
     .then(async () => {
-      logger.info('MongoDB Connected Successfully');
+      logger.info('✅ MongoDB Connected Successfully');
       try {
         const db = mongoose.connection.db;
         const commentIndexes = await db.collection('comments').indexes();
@@ -129,10 +131,11 @@ if (process.env.MONGODB_URI) {
       }
     })
     .catch((err) => {
-      logger.error('MongoDB Connection Error:', err);
+      logger.error('❌ MongoDB Connection Error:', err.message);
+      logger.error('Full connection error stack:', err.stack);
     });
 } else {
-  logger.error('MONGODB_URI is missing. Database features will not work.');
+  logger.error('❌ MONGODB_URI is missing! Database connection is required for this application.');
 }
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
@@ -1039,6 +1042,17 @@ cron.schedule('*/15 * * * * *', async () => {
   }
 });
 
-server.listen(PORT, () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-});
+try {
+  const PORT = process.env.PORT || 5000;
+
+  console.log("Starting server...");
+  console.log("PORT:", PORT);
+
+  server.listen(PORT, '0.0.0.0', () => {
+    logger.info(`🚀 Server running on port ${PORT}`);
+  });
+} catch (startupError) {
+  logger.error('❌ FATAL STARTUP ERROR:', startupError.message);
+  logger.error(startupError.stack);
+  process.exit(1);
+}
