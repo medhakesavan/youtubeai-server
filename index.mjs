@@ -250,7 +250,14 @@ app.get('/auth', (_req, res) => {
       'https://www.googleapis.com/auth/youtube.force-ssl'
     ],
   });
-  logger.info(`Sending OAuth request with redirect URI: ${process.env.REDIRECT_URI}`);
+  const redirectUri = process.env.REDIRECT_URI;
+  logger.info(`Initiating Google OAuth flow. REDIRECT_URI: ${redirectUri}`);
+  
+  if (!redirectUri) {
+    logger.error('CRITICAL: REDIRECT_URI is missing. OAuth will fail.');
+    return res.status(500).send('OAuth Configuration Error: Missing REDIRECT_URI');
+  }
+
   res.redirect(authUrl);
 });
 
@@ -279,6 +286,9 @@ app.get('/api/youtube/callback', async (req, res) => {
   }
 
   const client = getYouTubeAuth();
+  const redirectUri = process.env.REDIRECT_URI;
+  
+  logger.info(`OAuth callback received. Exchanging code with REDIRECT_URI: ${redirectUri}`);
 
   try {
     const { tokens } = await client.getToken(code);

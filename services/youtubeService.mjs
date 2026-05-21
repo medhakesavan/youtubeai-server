@@ -2,10 +2,15 @@ import { google } from 'googleapis';
 import logger from '../log.mjs';
 
 export const getYouTubeAuth = () => {
+  const redirectUri = process.env.REDIRECT_URI;
+  if (!redirectUri) {
+    logger.error('CRITICAL: REDIRECT_URI is not defined in environment variables!');
+  }
+  
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.REDIRECT_URI
+    redirectUri
   );
 };
 
