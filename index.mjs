@@ -61,6 +61,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://youtube-peach-alpha.vercel.app',
+  'https://youtubeclients.vercel.app',
+  'https://youtubeclients-git-main-medhakesavans-projects.vercel.app',
   ...(process.env.EXTRA_ORIGINS ? process.env.EXTRA_ORIGINS.split(',') : []),
 ];
 const io = new Server(server, {
