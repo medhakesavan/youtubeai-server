@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import logger from '../log.mjs';
+import logger from '../utils/logger.mjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_fallback';
 

@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import logger from '../log.mjs';
+import logger from '../utils/logger.mjs';
 
 export const getYouTubeAuth = () => {
   const redirectUri = process.env.REDIRECT_URI?.trim();
@@ -34,14 +34,21 @@ export const getYouTubeClientWithApiKey = (apiKey) => {
   return google.youtube({ version: 'v3', auth: apiKey });
 };
 
-export const fetchLatestComments = async (youtube, channelId, maxResults = 50) => {
+export const fetchLatestComments = async (youtube, channelId, maxResults = 50, videoId = null) => {
   try {
-    const res = await youtube.commentThreads.list({
+    const params = {
       part: 'snippet',
-      allThreadsRelatedToChannelId: channelId,
       maxResults,
       order: 'time'
-    });
+    };
+
+    if (videoId) {
+      params.videoId = videoId;
+    } else {
+      params.allThreadsRelatedToChannelId = channelId;
+    }
+
+    const res = await youtube.commentThreads.list(params);
 
     return (res.data.items || []).map(item => ({
       youtubeId: item.snippet.topLevelComment.id,
@@ -101,14 +108,14 @@ export const likeComment = async (youtube, commentId, retries = 3) => {
       // EXPERIMENTAL: Using setModerationStatus('published') as a 'Force-Publish' trigger.
       // While the official API doesn't have a 'like' method, some channel owners report 
       // that re-publishing an already published comment can trigger engagement sync.
-      logger.info(`Attempting Force-Like (Force-Publish) for comment ID: ${commentId}`);
+      logger.info(`Sending YouTube API request: setRating(like) for comment ID: ${commentId}`);
       
-      const response = await youtube.comments.setModerationStatus({
-        id: [commentId],
-        moderationStatus: 'published'
+      const response = await youtube.comments.setRating({
+        id: commentId,
+        rating: 'like'
       });
       
-      logger.info(`Force-Like (Force-Publish) success for: ${commentId} (Status: ${response.status})`);
+      logger.info(`YouTube setRating(like) success for: ${commentId} (Status: ${response.status})`);
       return { success: true, status: 'success' };
     } catch (error) {
       const errorMsg = error.response?.data?.error?.message || error.message;

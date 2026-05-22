@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   youtubeChannelId: { type: String, default: '' },
   settings: {
     autoMod: { type: Boolean, default: true },
+    autoLike: { type: Boolean, default: true },
     confidenceThreshold: { type: Number, default: 85 },
     languages: { type: [String], default: ['English', 'Tamil', 'Tanglish'] },
     realTimeAlerts: { type: Boolean, default: true },

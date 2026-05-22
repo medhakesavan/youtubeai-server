@@ -21,7 +21,8 @@ const commentSchema = new mongoose.Schema({
   likeStatus: { type: String, enum: ['none', 'success', 'failed', 'not_supported', 'replied'], default: 'none' },
   likeError: String,
   aiActionTaken: { type: Boolean, default: false },
-  deleteFailed: { type: Boolean, default: false },
+   autoLiked: { type: Boolean, default: false },
+   deleteFailed: { type: Boolean, default: false },
   moderatedBy: String,
   moderatedAt: Date,
 }, { timestamps: true });
