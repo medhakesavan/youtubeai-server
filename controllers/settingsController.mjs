@@ -3,19 +3,24 @@ import Channel from '../models/Channel.mjs';
 import logger from '../utils/logger.mjs';
 import { getYouTubeClientWithApiKey } from '../services/youtubeService.mjs';
 
+const maskKey = (key) =>
+  key ? `${key.substring(0, 6)}...${key.slice(-4)}` : '';
+
 export const getSettings = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const maskedKey = user.youtubeApiKey
-      ? `${user.youtubeApiKey.substring(0, 8)}...${user.youtubeApiKey.substring(user.youtubeApiKey.length - 4)}`
-      : '';
-
     res.json({
       settings: user.settings,
-      youtubeApiKey: maskedKey,
-      youtubeChannelId: user.youtubeChannelId
+      credentials: {
+        youtubeApiKey: maskKey(user.youtubeApiKey),
+        openaiApiKey:  maskKey(user.openaiApiKey),
+        gowhatsApiKey: maskKey(user.gowhatsApiKey),
+        gowhatsUrl:    user.gowhatsUrl  || '',
+        productLink:   user.productLink || '',
+      },
+      youtubeChannelId: user.youtubeChannelId,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -27,6 +32,26 @@ export const updateSettings = async (req, res) => {
     const { settings } = req.body;
     const user = await User.findByIdAndUpdate(req.user.id, { $set: { settings } }, { new: true });
     res.json({ success: true, settings: user.settings });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const saveCredentials = async (req, res) => {
+  try {
+    const { youtubeApiKey, openaiApiKey, gowhatsApiKey, gowhatsUrl, productLink } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Only update a field if it was supplied and is NOT a masked placeholder
+    if (youtubeApiKey && !youtubeApiKey.includes('...')) user.youtubeApiKey = youtubeApiKey;
+    if (openaiApiKey  && !openaiApiKey.includes('...'))  user.openaiApiKey  = openaiApiKey;
+    if (gowhatsApiKey && !gowhatsApiKey.includes('...')) user.gowhatsApiKey = gowhatsApiKey;
+    if (gowhatsUrl  !== undefined) user.gowhatsUrl  = gowhatsUrl;
+    if (productLink !== undefined) user.productLink = productLink;
+
+    await user.save();
+    res.json({ success: true, message: 'Credentials saved.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

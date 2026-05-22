@@ -25,6 +25,7 @@ const commentSchema = new mongoose.Schema({
    deleteFailed: { type: Boolean, default: false },
   moderatedBy: String,
   moderatedAt: Date,
+  note: { type: String, default: '' },
 }, { timestamps: true });
 
 commentSchema.index({ userId: 1, youtubeId: 1 }, { unique: true });

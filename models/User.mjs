@@ -6,6 +6,10 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   youtubeApiKey: { type: String, default: '' },
   youtubeChannelId: { type: String, default: '' },
+  openaiApiKey:   { type: String, default: '' },
+  gowhatsApiKey:  { type: String, default: '' },
+  gowhatsUrl:     { type: String, default: '' },
+  productLink:    { type: String, default: '' },
   settings: {
     autoMod: { type: Boolean, default: true },
     autoLike: { type: Boolean, default: true },
