@@ -42,6 +42,7 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'https://youtubeai-client.vercel.app',
   'https://youtube-peach-alpha.vercel.app',
   'https://youtubeclients.vercel.app',
   'https://youtubeclients-git-main-medhakesavans-projects.vercel.app',
