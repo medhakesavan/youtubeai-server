@@ -12,6 +12,7 @@ import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import User from './models/User.mjs';
 import routes from './routes/index.mjs';
+import jwt from 'jsonwebtoken';
 
 // ── Global Error Handlers ──────────────────────────────────────────────────────
 process.on('uncaughtException', (err) => {
@@ -51,6 +52,21 @@ const io = new Server(server, {
   cors: { origin: allowedOrigins, credentials: true }
 });
 
+const JWT_SECRET = process.env.JWT_SECRET || 'stable_dev_secret_2026';
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) return next(new Error('Authentication error'));
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    socket.user = decoded;
+    next();
+  } catch (err) {
+    next(new Error('Authentication error'));
+  }
+});
+
 app.set('io', io);
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
@@ -59,38 +75,48 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-// ── MongoDB ────────────────────────────────────────────────────────────────────
-if (process.env.MONGODB_URI) {
-  mongoose.connect(process.env.MONGODB_URI)
-    .then(() => logger.info('✅ MongoDB Connected Successfully'))
-    .catch((err) => logger.error('❌ MongoDB Connection Error:', err.message));
-}
+import { initCommentJob } from './jobs/commentJob.mjs';
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 app.use('/api', routes);
-
-// Legacy/Compatibility Redirects
 app.get('/auth', (_req, res) => res.redirect('/api/youtube/auth'));
 app.get('/', (_req, res) => res.send('AI YouTube Moderator API is running.'));
 
-// ── Admin Seeder ──────────────────────────────────────────────────────────────
-async function seedAdmin() {
+// ── Startup Sequence ───────────────────────────────────────────────────────────
+async function startServer() {
   try {
-    const adminEmail = 'admin@youtubeai.test';
-    const exists = await User.findOne({ email: adminEmail });
-    if (!exists) {
-      const hashedPassword = await bcrypt.hash('Admin@123', 10);
-      await new User({ name: 'System Admin', email: adminEmail, password: hashedPassword }).save();
-      logger.info('✅ Admin account seeded: admin@youtubeai.test');
+    if (process.env.MONGODB_URI) {
+      logger.info('⏳ Connecting to MongoDB...');
+      await mongoose.connect(process.env.MONGODB_URI);
+      logger.info('✅ MongoDB Connected Successfully');
+    } else {
+      logger.warn('⚠️ MONGODB_URI not found in environment');
     }
+
+    // Forced Admin Reset (Development Only)
+    const adminEmail = 'admin@youtubeai.test';
+    await User.deleteMany({ email: adminEmail }); // Delete old record
+    const hashedPassword = await bcrypt.hash('Admin@123', 10);
+    await User.create({ 
+      name: 'System Admin', 
+      email: adminEmail, 
+      password: hashedPassword 
+    });
+    logger.info('🚀 ADMIN ACCOUNT RESET: admin@youtubeai.test / Admin@123');
+
+    // Start Listening
+    server.listen(PORT, '0.0.0.0', () => {
+      logger.info(`🚀 Server running on port ${PORT}`);
+      logger.info(`🔗 API Base: http://localhost:${PORT}/api`);
+      
+      // Initialize Background Jobs
+      initCommentJob(io);
+    });
+
   } catch (err) {
-    logger.error('Seeder Error:', err);
+    logger.error('❌ Critical Startup Error:', { message: err.message, stack: err.stack });
+    process.exit(1);
   }
 }
-seedAdmin();
 
-// ── Start Server ──────────────────────────────────────────────────────────────
-server.listen(PORT, '0.0.0.0', () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`🔗 API Base: http://localhost:${PORT}/api`);
-});
+startServer();

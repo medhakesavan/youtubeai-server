@@ -8,6 +8,7 @@ import {
   getYouTubeClientWithApiKey, 
   fetchVideos 
 } from '../services/youtubeService.mjs';
+import { processComments } from '../services/commentProcessingService.mjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_fallback';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -74,10 +75,16 @@ export const handleCallback = async (req, res) => {
     if (tokens.refresh_token) updateData.refreshToken = tokens.refresh_token;
     if (tokens.expiry_date) updateData.expiryDate = tokens.expiry_date;
 
-    await Channel.findOneAndUpdate(
+    const channel = await Channel.findOneAndUpdate(
       { userId, channelId: channelData.id },
       { $set: updateData },
-      { upsert: true }
+      { upsert: true, new: true }
+    );
+
+    // Trigger initial background process
+    const io = req.app.get('io');
+    processComments(channel, tokens, null, io).catch(err => 
+      logger.error('Initial processComments error:', err)
     );
 
     res.redirect(`${FRONTEND_URL}/dashboard?status=success`);
