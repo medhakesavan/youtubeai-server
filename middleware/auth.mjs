@@ -5,9 +5,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'stable_dev_secret_2026';
 
 export const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+  
+  // Fallback to cookie if Bearer token is missing
+  if (!token && req.cookies) {
+    token = req.cookies.token;
+  }
 
-  console.log(`🛡️ [Auth Middleware] ${req.method} ${req.path} - Token received: ${token ? 'YES' : 'NO'}`);
+  console.log(`🛡️ [Auth Middleware] ${req.method} ${req.path} - Token source: ${authHeader ? 'Header' : (token ? 'Cookie' : 'NONE')}`);
 
   if (!token) {
     return res.status(401).json({ error: 'No token, authorization denied' });
