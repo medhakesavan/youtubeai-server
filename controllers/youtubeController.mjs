@@ -87,7 +87,7 @@ export const handleCallback = async (req, res) => {
       logger.error('Initial processComments error:', err)
     );
 
-    res.redirect(`${FRONTEND_URL}/dashboard?status=success`);
+    res.redirect(`${FRONTEND_URL}/?status=success`);
   } catch (error) {
     logger.error('Callback error:', error);
     res.redirect(`${FRONTEND_URL}/?error=auth_failed`);
